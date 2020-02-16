@@ -1,0 +1,59 @@
+@font-face {
+    font-family: mozart;
+    src: url('resources/mozart.ttf');
+}
+
+* {
+    padding: 0px;
+    margin: 0px;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: royalblue;
+}
+
+#main {
+    margin-top: 150px;
+    text-align: center;
+}
+
+#divcanvas {
+    display: inline-block;
+    border: 7px solid rgba(6, 15, 19, 0.4);
+}
+
+#canvas {
+    background-color: white;
+    background-color: rgb(255, 255, 255);
+}
+
+table#scoreboard {
+    display: inline-block;
+    vertical-align: top;
+    width: 268px;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.4);
+    font-family: mozart;
+    font-size: 26px;
+}
+
+table#scoreboard thead {
+    background-color: rgb(0, 150, 150);
+}
+
+table#scoreboard tbody tr:nth-child(odd){
+    background-color: aquamarine;
+}
+
+table#scoreboard tbody tr:nth-child(even){
+    background-color: aqua;
+}
+
+table#scoreboard td {
+    padding: 0px 8px 0px 10px;
+}
+
+table#scoreboard td:nth-child(1) {
+    width: 116px;
+}

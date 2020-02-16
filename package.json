@@ -1,0 +1,23 @@
+{
+  "name": "snake-battle",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlanVncs/snake-battle.git"
+  },
+  "author": "alanvncs",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlanVncs/snake-battle/issues"
+  },
+  "homepage": "https://github.com/AlanVncs/snake-battle#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}

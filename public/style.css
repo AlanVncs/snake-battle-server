@@ -18,42 +18,110 @@ body {
     text-align: center;
 }
 
-#divcanvas {
+#game {
     display: inline-block;
+    background-color: rgba(6, 15, 19, 0.4);;
+    padding: 7px;
+}
+
+#divcanvas {
     border: 7px solid rgba(6, 15, 19, 0.4);
 }
 
 #canvas {
     background-color: white;
-    background-color: rgb(255, 255, 255);
 }
 
-table#scoreboard {
+#status {
     display: inline-block;
     vertical-align: top;
-    width: 268px;
-    padding: 5px;
     background-color: rgba(0, 0, 0, 0.4);
+}
+
+table.status {
+    padding: 5px;
     font-family: mozart;
     font-size: 26px;
 }
 
-table#scoreboard thead {
+table.status thead {
     background-color: rgb(0, 150, 150);
 }
 
-table#scoreboard tbody tr:nth-child(odd){
+table.status tbody tr:nth-child(odd){
     background-color: aquamarine;
 }
 
-table#scoreboard tbody tr:nth-child(even){
+table.status tbody tr:nth-child(even){
     background-color: aqua;
 }
 
-table#scoreboard td {
+table.status td {
     padding: 0px 8px 0px 10px;
 }
 
-table#scoreboard td:nth-child(1) {
+table.status td div {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: royalblue;
+    margin-top: 1px;
+}
+
+table.status td:nth-child(1){
+    padding: 0px 5px;
+}
+
+table.status td:nth-child(2) {
     width: 116px;
+}
+
+table.status td:nth-child(3) {
+    width: 67px;
+}
+
+table#queue {
+    counter-reset: queue;
+}
+
+table#queue tbody td:nth-child(3)::after {
+    content: "#" counter(queue);
+    counter-increment: queue;
+}
+
+table#queue td div {
+    visibility: hidden;
+}
+
+div#play {
+    display: inline-block;
+    margin-top: 10px;
+    margin-bottom: 7px;
+    padding: 5px 10px;
+    font-family: mozart;
+    font-size: 30px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 5px;
+    box-shadow: 0px 4px 0px 0px #4A4A4A;
+    background-color: rgb(89, 200, 200);
+}
+
+div#play:hover {
+    background-color: rgb(89, 228, 228);
+}
+
+div#play:active {
+    transform: translate(0px, 2px);
+    box-shadow: 0px 2px 0px 0px #444;
+}
+
+input {
+    display: none;
+    margin-top: 10px;
+    font-family: mozart;
+    font-size: 30px;
+    background-color: transparent;
+    text-align: center;
+    border-radius: 5px;
 }

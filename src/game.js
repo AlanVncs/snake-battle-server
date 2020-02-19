@@ -1,8 +1,11 @@
 // Game config
-const MOVE_MS = 500;
+const MOVE_MS = 250;
 const MAX_PLAYERS = 10;
 const MAX_NAME_SIZE = 10;
 const BLOCKS = 25;
+const SNAKE_MIN_SIZE = 10;
+
+const KEYS = {UP: 'v', DOWN: 'v', RIGHT: 'h', LEFT: 'h'};
 
 // Game vars
 const players = [];
@@ -34,9 +37,9 @@ class Snake {
         const i = Math.floor(Math.random()*BLOCKS);
         const j = Math.floor(Math.random()*BLOCKS);
 
-        this.addNode(Node.mapPosition(i, j));
-        this.addNode(Node.mapPosition(i+1, j));
-        this.addNode(Node.mapPosition(i+2, j));
+        for(let c=0; c<SNAKE_MIN_SIZE; c++){
+            this.addNode(Node.mapPosition(i+c, j));
+        }
     }
 
     addNode(node){
@@ -71,18 +74,27 @@ class Snake {
         const node = Node.mapPosition(i, j);
         this.body.unshift(node);
     }
+
+    collided(node){
+        return this.body.find(cBody => {
+            return cBody.equals(node);
+        });
+    }
 }
 
 class Player{
+
     constructor(id, name){
         this.id = id;
         this.name = name;
         this.keyBuffer = [];
-        this.direction = 'UP';
-        this.safe = true;
+        // this.direction;
+        this.safe = false;
         this.alive = true;
         this.fed = false;
-        this.snake = new Snake();
+        this.score = 0;
+        // this.snake
+        this.setHeadColor();
     }
 
     moveBody(){
@@ -94,66 +106,102 @@ class Player{
         }
         this.snake.move(this.direction);
     }
+
+    collided(player){
+        return player.snake.collided(this.getHead());
+    }
+
+    setHeadColor(headColor){
+        const color = headColor || {};
+        if(!headColor){
+            color.r = Math.random()*256 | 0;
+            color.g = Math.random()*256 | 0;
+            color.b = Math.random()*256 | 0;
+            color.a = 1;
+        }
+        this.headColor = color;
+    }
+
+    getHead(){
+        return this.snake.body[0];
+    }
+
+    keepSafe(ms){
+        this.safe = true;
+        setTimeout(() => {
+            this.safe = false;
+        }, 5000);
+    }
 }
 
 
 module.exports = server => {
+
     const socketIO = require('socket.io');
     const io = socketIO(server);
 
     io.on('connection', client => {
-        console.log(`New client: ${client.id}`);
-
         // TODO Verificar o nome
-        client.on('play', name => {
+        client.on('start', name => {
+            
+            let found = queue.find(player => {
+                return player.id == client.id;
+            });
+            if(found) return; // Player already in game
+
+            found = players.find(player => {
+                return player.id == client.id;
+            });
+            if(found) return; // Player already in game
+
             const player = new Player(client.id, name);
             queue.push(player);
+
+            client.emit('started', {});
         });
 
-        
+        client.on('quit', () => {
+            kick(client);
+        });
 
         client.on('disconnect', () => {
-            var deleted = false;
-
-            queue.some((player, index) => {
-                if(client.id == player.id){
-                    deleted = true;
-                    queue.splice(index, 1);
-                    return true;
-                }
-            });
-
-            if (deleted) return;
-
-            players.some((player, index) => {
-                if(client.id == player.id){
-                    deleted = true;
-                    players.splice(index, 1);
-                    return true;
-                }
-            });
-
+            kick(client);
         });
     });
 
+    function kick(client){
+        var deleted = queue.find((player, index) => {
+            if(client.id == player.id){
+                queue.splice(index, 1);
+                return true;
+            }
+        });
+
+        if (deleted) return;
+
+        players.some((player, index) => {
+            if(client.id == player.id){
+                players.splice(index, 1);
+                return true;
+            }
+        });
+    }
 
     // Game loop
     setInterval(async () => {
-
-        // Move players and check self collision
+        
         await movePlayers();
 
-        // Check mutual collisions and if a snake was fed
-        // await checkCollisions();
+        await checkCollisions();
 
-        // Remove players
+        await removeDeadPlayers();
+
+        moveQueue();
+
+        // TODO Generate food
 
         // Broadcast state
-        io.sockets.emit('update', {players});
-
-        // Move queue
-        const newPlayers = queue.splice(0, MAX_PLAYERS - players.length);
-        players.push(...newPlayers);
+        io.sockets.emit('update', {players, queue});
 
     }, MOVE_MS);
 
@@ -165,16 +213,94 @@ module.exports = server => {
             }
             var count = 0;
             players.forEach(async player => {
-                // Checar keybuffer
 
-                // Move player
+                // Consumes the keyBuffer
+                while(player.keyBuffer.length > 0 && (player.keyBuffer[0] == player.direction || KEYS[player.keyBuffer[0]] == KEYS[player.direction])){
+                    player.keyBuffer.shift();
+                }
+                player.direction = player.keyBuffer.shift() || player.direction;
+
                 player.moveBody();
-
-                // Check self collision
 
                 count++;
                 if(count == players.length) resolve();
             });
         });
     }
+
+    async function checkCollisions(){
+        return new Promise(resolve => {
+            if(players.length == 0){
+                resolve();
+                return;
+            }
+            var count = 0;
+            players.forEach(async (player, index) => {
+                // Check if collided
+                if(!player.safe){
+                    players.except(index).some(enemy => {
+                        if(!enemy.safe && player.collided(enemy)){
+                            player.alive = false;
+                        }
+                    });
+                }
+
+                // TODO Check if fed
+                // if(player.alive){
+
+                // }
+
+                count++;
+                if(count == players.length) resolve();
+            });
+        });
+    }
+
+    async function removeDeadPlayers(){
+        return new Promise(resolve => {
+            if(players.length == 0){
+                resolve();
+                return;
+            }
+
+            var count = 0;
+            var removed = 0;
+            players.forEach(async (player, index) => {
+                if(!player.alive){
+                    const [dead] = players.splice(index - removed, 1);
+                    queue.push(dead);
+                    removed++;
+                }
+
+                count++;
+                if(count == players.length) resolve();
+            });
+        });
+    }
+
+    function moveQueue(){
+        if(players.length < MAX_PLAYERS && queue.length > 0){
+            const newPlayer = queue.shift();
+            newPlayer.snake = new Snake();
+            newPlayer.score = 0;
+            newPlayer.alive = true;
+            newPlayer.direction = 'UP';
+            newPlayer.keepSafe();
+            io.sockets.sockets[newPlayer.id].on('cmd', input => {
+                newPlayer.keyBuffer.push(input);
+            });
+            players.push(newPlayer);
+        }
+    }
 }
+
+Array.prototype.except = function(index) {
+    if(index >= 0 && index < this.length){
+        const left = this.slice(0, index);
+        const right = this.slice(index+1);
+        return left.concat(right);
+    }
+    else{
+        return this.slice();
+    }
+}; 

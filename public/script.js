@@ -1,91 +1,111 @@
-const canvas = document.getElementById('canvas');
-const context = canvas.getContext("2d");
-
-const GRID_COLOR = {r: 0, g: 0, b: 0, a: 0.4};
-const HEAD_COLOR = {r: 255, g: 100, b: 100, a: 1};
-const BODY_COLOR = {r: 100, g: 150, b: 150, a: 1};
+const socket = io();
 
 const KEYS = {87: 'UP', 83: 'DOWN', 68: 'RIGHT', 65: 'LEFT'};
 
-const CANVAS_SIZE = 500;
-const BLOCKS = 25;
-const BLOCK_SIZE = CANVAS_SIZE/BLOCKS;
+const FPS  = 8;
+const DRAW_DELAY_MS = 1000/FPS;
 
-// Initialize
-canvas.width  = CANVAS_SIZE;
-canvas.height = CANVAS_SIZE;
-drawGrid();
+var players = [];
+var myID = undefined;
 
-const socket = io();
+const playBtn = document.getElementById('play');
+const quitBtn = document.getElementById('quit');
+const nameInput = document.getElementById('type-name');
 
-socket.emit('play', 'AlanVncs');
-
-socket.on('update', ({players}) => {
-    clearAllNodes();
-    // drawFood(food);
-    players.forEach(player => {
-        if(player.alive){
-            drawBody(player);
-            // if(snake.id == clientID){
-            //     drawSnake(snake);
-            // }
-            // else{
-            //     drawEnemySnake(snake);
-            // }
-        }
-    });
+socket.on('update', data => {
+    players = data.players;
+    if(myID){
+        players.some(player => {
+            if(player.id == myID){
+                player.me = true;
+                return true;
+            }
+        });
+    }
+    drawStatus(data);
 });
 
-async function drawBody(player){
+socket.on('started', data => {
 
-    const headColor = {};
-    const bodyColor = {};
+    myID = socket.id;
 
-    Object.assign(headColor, HEAD_COLOR);
-    Object.assign(bodyColor, BODY_COLOR);
-
-    if(player.safe){
-        headColor.a = 0.5;
-        bodyColor.a = 0.5;
+    document.onkeydown = event => {
+        const keyCode = event.which || event.keyCode;
+        const key = KEYS[keyCode];
+        if(key){
+            socket.emit('cmd', key);
+        }
     }
+
+    nameInput.style.display = 'none';
+    playBtn.style.display = 'none';
+    quitBtn.style.display = 'inline-block';
     
-    setFillStyle(headColor);
-    await drawNode(player.snake.body[0]);
+    quitBtn.onclick = event => {
+        myID = undefined;
+        document.onkeydown = null;
+        nameInput.style.display = 'none';
+        playBtn.style.display = 'inline-block';
+        quitBtn.style.display = 'none';
+        playBtn.onclick = playClick;
+        socket.emit('quit');
+    }
+});
 
-    setFillStyle(bodyColor);
-    for(i=1; i<player.snake.body.length; i++){
-        drawNode(player.snake.body[i]);
+playBtn.onclick = playClick;
+function playClick(){
+    if(myID) return;
+    if(nameInput.value === "" || nameInput.style.display == 'none'){
+        nameInput.style.display = 'initial';
+        nameInput.focus();
+    }
+    else{
+        socket.emit('start', nameInput.value);
     }
 }
 
-async function drawNode(node){
-    context.fillRect(node.j*BLOCK_SIZE + 2, node.i*BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
-}
-
-function clearAllNodes(){
-    for(i=0; i<BLOCKS; i++){
-        for(j=0; j<BLOCKS; j++){
-            context.clearRect(j*BLOCK_SIZE + 2, i*BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
-        }
+nameInput.onkeyup = event => {
+    const key = event.which || event.keyCode;
+    if(key == 13) {
+        playBtn.click();
     }
 }
 
-function drawGrid(){
-    setStrokeStyle(GRID_COLOR);
-    for(i=0; i<BLOCKS; i++){
-        for(j=0; j<BLOCKS; j++){
-            context.strokeRect(j*BLOCK_SIZE, i*BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);   
-        }
-    }
-}
+// Draw loop
+setInterval(() => {
+    drawGame(players);
+}, DRAW_DELAY_MS);
 
-function setFillStyle({r, g, b, a} = DEFAULT_COLOR){
-    context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-}
 
-function setStrokeStyle({r, g, b, a} = DEFAULT_COLOR){
-    context.strokeStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

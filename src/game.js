@@ -1,5 +1,5 @@
 // Game config
-const MOVE_MS = 250;
+const MOVE_MS = 1000/8;
 const MAX_PLAYERS = 10;
 const MAX_NAME_SIZE = 10;
 const BLOCKS = 25;

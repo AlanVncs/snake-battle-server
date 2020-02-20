@@ -13,8 +13,13 @@ body {
     background-color: royalblue;
 }
 
+div.logo {
+    margin-top: 50px;
+    text-align: center;
+}
+
 #main {
-    margin-top: 150px;
+    margin-top: 50px;
     text-align: center;
 }
 
@@ -133,12 +138,35 @@ input#type-name {
     font-size: 30px;
     background-color: rgba(0, 150, 150, 0.5);
     color: rgb(110, 0, 0);
-    /* color: rgb(6, 5, 100); */
-    /* background-color: transparent; */
     text-align: center;
     border-radius: 5px;
 }
 
 input#type-name::placeholder {
     color: rgb(110, 0, 0);
+}
+
+div#footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 50px;
+    line-height: 50px;
+    padding-right: 30px;
+    background-color: rgba(0, 0, 0, 0.4);
+    text-align: center;
+}
+
+div#footer a {
+    text-decoration: none;
+}
+
+div#footer a:visited {
+    color: initial;
+}
+
+div#footer img {
+    vertical-align: middle;
+    transform: translateY(-2px);
 }

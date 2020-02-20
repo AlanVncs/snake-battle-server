@@ -1,21 +1,21 @@
 const socket = io();
 
-const KEYS = {87: 'UP', 83: 'DOWN', 68: 'RIGHT', 65: 'LEFT'};
+const KEYS = {87: 'UP', 83: 'DOWN', 68: 'RIGHT', 65: 'LEFT', 37: 'LEFT', 38: 'UP', 39: 'RIGHT', 40: 'DOWN'};
 
 const FPS  = 8;
 const DRAW_DELAY_MS = 1000/FPS;
 
-var players = [];
+var data = {};
 var myID = undefined;
 
 const playBtn = document.getElementById('play');
 const quitBtn = document.getElementById('quit');
 const nameInput = document.getElementById('type-name');
 
-socket.on('update', data => {
-    players = data.players;
+socket.on('update', serverData => {
+    data = serverData;
     if(myID){
-        players.some(player => {
+        data.players.some(player => {
             if(player.id == myID){
                 player.me = true;
                 return true;
@@ -31,6 +31,7 @@ socket.on('started', data => {
 
     document.onkeydown = event => {
         const keyCode = event.which || event.keyCode;
+        console.log(keyCode);
         const key = KEYS[keyCode];
         if(key){
             socket.emit('cmd', key);
@@ -73,7 +74,7 @@ nameInput.onkeyup = event => {
 
 // Draw loop
 setInterval(() => {
-    drawGame(players);
+    drawGame(data);
 }, DRAW_DELAY_MS);
 
 

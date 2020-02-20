@@ -10,6 +10,7 @@ const GRID_COLOR = {r: 0, g: 0, b: 0, a: 0.4};
 const MY_HEAD_COLOR = {r: 255, g: 100, b: 100, a: 1};
 const MY_BODY_COLOR = {r: 150, g: 100, b: 100, a: 1};
 const ENEMY_BODY_COLOR = {r: 100, g: 100, b: 100, a: 0.7};
+const FOOD_COLOR = {r: 65, g: 185, b: 28, a: 1};
 
 const CANVAS_SIZE = 500;
 const BLOCKS = 25;
@@ -21,11 +22,12 @@ canvas.width  = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
 drawGrid();
 
-function drawGame(players){
+function drawGame(data){
     requestAnimationFrame(() => {
         drawFlag = !drawFlag;
         clearAllNodes();
-        players.forEach(player => {
+        drawFood(data.food);
+        data.players.forEach(player => {
             drawBody(player);
         });
     });
@@ -98,6 +100,13 @@ async function drawBody(player){
 
 async function drawNode(node){
     context.fillRect(node.j*BLOCK_SIZE + 2, node.i*BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
+}
+
+async function drawFood(node){
+    setFillStyle(FOOD_COLOR);
+    context.beginPath();
+    context.arc(node.j*BLOCK_SIZE + BLOCK_SIZE/2, node.i*BLOCK_SIZE + BLOCK_SIZE/2, BLOCK_SIZE*0.3, 0, 2*Math.PI);
+    context.fill();
 }
 
 function clearAllNodes(){

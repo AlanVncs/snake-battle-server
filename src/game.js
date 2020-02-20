@@ -7,13 +7,11 @@ const SNAKE_MIN_SIZE = 10;
 
 const KEYS = {UP: 'v', DOWN: 'v', RIGHT: 'h', LEFT: 'h'};
 
-// Game vars
-const players = [];
-const queue = [];
+const map = [];
 
 class Node {
-    
-    constructor({i, j}) {
+
+    constructor({i, j} = {i: -1, j: -1}) {
         this.i = i;
         this.j = j;
     }
@@ -27,6 +25,34 @@ class Node {
     equals(node) {
         return this.i == node.i && this.j == node.j;
     }
+
+    markMap(value){
+        const index = this.i*BLOCKS + this.j;
+        map[index] = value;
+    }
+
+    fromIndex(index){
+        this.j = index%BLOCKS;
+        this.i = index/BLOCKS | 0;
+    }
+}
+
+class Food extends Node {
+    
+    constructor(coords){
+        super({i: (BLOCKS/2) | 0, j: (BLOCKS/2) | 0});
+        this.eaten = false;
+    }
+
+    changePosition(){
+        var index;
+        do{
+            index = Math.random()*(BLOCKS*BLOCKS) | 0;
+        }
+        while(map[index]);
+        this.fromIndex(index);
+        this.eaten = false;
+    }
 }
 
 class Snake {
@@ -38,7 +64,9 @@ class Snake {
         const j = Math.floor(Math.random()*BLOCKS);
 
         for(let c=0; c<SNAKE_MIN_SIZE; c++){
-            this.addNode(Node.mapPosition(i+c, j));
+            let node = Node.mapPosition(i+c, j);
+            node.markMap(true);
+            this.addNode(node);
         }
     }
 
@@ -72,12 +100,19 @@ class Snake {
             break;
         }
         const node = Node.mapPosition(i, j);
+        node.markMap(true);
         this.body.unshift(node);
     }
 
     collided(node){
         return this.body.find(cBody => {
             return cBody.equals(node);
+        });
+    }
+
+    removeBody(){
+        this.body.forEach(node => {
+            node.markMap(false);
         });
     }
 }
@@ -102,13 +137,26 @@ class Player{
             this.fed = false;
         }
         else{
-            this.snake.pop();
+            this.snake.pop().markMap(false);
         }
         this.snake.move(this.direction);
     }
 
-    collided(player){
-        return player.snake.collided(this.getHead());
+    collided(object){
+        if(object instanceof Player){
+            return object.snake.collided(this.getHead());
+        }
+        else{
+            // Node
+            return object.equals(this.getHead());
+        }
+    }
+
+    selfCollided(){
+        const head = this.getHead();
+        return this.snake.body.slice(4).find(node => {
+            return head.equals(node);
+        });
     }
 
     setHeadColor(headColor){
@@ -132,7 +180,22 @@ class Player{
             this.safe = false;
         }, 5000);
     }
+
+    die(){
+        this.snake.removeBody();
+    }
 }
+
+Array.prototype.except = function(index) {
+    const left = this.slice(0, index);
+    const right = this.slice(index+1);
+    return left.concat(right);
+};
+
+// Game vars
+const players = [];
+const queue = [];
+const food = new Food();
 
 
 module.exports = server => {
@@ -141,8 +204,12 @@ module.exports = server => {
     const io = socketIO(server);
 
     io.on('connection', client => {
-        // TODO Verificar o nome
+        
         client.on('start', name => {
+
+            if(!name.length || name.length > 10){
+                return;
+            }
             
             let found = queue.find(player => {
                 return player.id == client.id;
@@ -169,6 +236,26 @@ module.exports = server => {
         });
     });
 
+    // Game loop
+    setInterval(async () => {
+        
+        await movePlayers();
+
+        await checkCollisions();
+
+        await removeDeadPlayers();
+
+        moveQueue();
+
+        if(food.eaten) food.changePosition();
+
+        players.sort((player1, player2) => {
+            return player2.score - player1.score;
+        });
+        io.sockets.emit('update', {players, queue, food});
+
+    }, MOVE_MS);
+
     function kick(client){
         var deleted = queue.find((player, index) => {
             if(client.id == player.id){
@@ -181,29 +268,12 @@ module.exports = server => {
 
         players.some((player, index) => {
             if(client.id == player.id){
-                players.splice(index, 1);
+                client.removeAllListeners('cmd');
+                players.splice(index, 1)[0].die();
                 return true;
             }
         });
     }
-
-    // Game loop
-    setInterval(async () => {
-        
-        await movePlayers();
-
-        await checkCollisions();
-
-        await removeDeadPlayers();
-
-        moveQueue();
-
-        // TODO Generate food
-
-        // Broadcast state
-        io.sockets.emit('update', {players, queue});
-
-    }, MOVE_MS);
 
     async function movePlayers(){
         return new Promise(resolve => {
@@ -236,19 +306,27 @@ module.exports = server => {
             }
             var count = 0;
             players.forEach(async (player, index) => {
-                // Check if collided
+
                 if(!player.safe){
+                    // Check collision with another player
                     players.except(index).some(enemy => {
                         if(!enemy.safe && player.collided(enemy)){
                             player.alive = false;
                         }
                     });
+
+                    // Check self collision
+                    if(player.alive && player.selfCollided()){
+                        player.alive = false;
+                    }
                 }
 
-                // TODO Check if fed
-                // if(player.alive){
-
-                // }
+                // Check if player ate the food
+                if(!food.eaten && player.alive && player.collided(food)){
+                    player.fed = true;
+                    player.score++;
+                    food.eaten = true;
+                }
 
                 count++;
                 if(count == players.length) resolve();
@@ -267,7 +345,9 @@ module.exports = server => {
             var removed = 0;
             players.forEach(async (player, index) => {
                 if(!player.alive){
+                    io.sockets.sockets[player.id].removeAllListeners('cmd');
                     const [dead] = players.splice(index - removed, 1);
+                    player.die();
                     queue.push(dead);
                     removed++;
                 }
@@ -293,14 +373,3 @@ module.exports = server => {
         }
     }
 }
-
-Array.prototype.except = function(index) {
-    if(index >= 0 && index < this.length){
-        const left = this.slice(0, index);
-        const right = this.slice(index+1);
-        return left.concat(right);
-    }
-    else{
-        return this.slice();
-    }
-}; 
